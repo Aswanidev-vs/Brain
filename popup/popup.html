@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Brain</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="container">
+    <header class="header">
+      <div class="logo">
+        <svg class="brain-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z"/><path d="M8 12c0-2.21 1.79-4 4-4s4 1.79 4 4-1.79 4-4 4"/><circle cx="12" cy="12" r="2"/></svg>
+        <h1>Brain</h1>
+      </div>
+      <p class="tagline">Capture & Connect AI Conversations</p>
+    </header>
+
+    <div class="security-badge">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+      100% Local - No Data Leaves Your Machine
+    </div>
+
+    <div class="tabs">
+      <button class="tab active" data-tab="setup">Setup</button>
+      <button class="tab" data-tab="settings">Settings</button>
+      <button class="tab" data-tab="security">Privacy</button>
+    </div>
+
+    <div id="setup" class="panel">
+      <h2>Connection</h2>
+      <div class="method-select">
+        <label class="method">
+          <input type="radio" name="method" value="api" checked>
+          <div class="method-card"><strong>Obsidian Local REST API</strong><span>Uses the unofficial plugin</span></div>
+        </label>
+        <label class="method">
+          <input type="radio" name="method" value="fs">
+          <div class="method-card"><strong>Direct File System</strong><span>No plugin needed</span></div>
+        </label>
+      </div>
+
+      <div id="apiSetup">
+        <div class="status" id="status"><span class="dot off"></span><span>Not connected</span></div>
+
+        <div class="field">
+          <label>API Key</label>
+          <div class="input-row">
+            <input type="password" id="apiKey" placeholder="Paste API key from Obsidian">
+            <button id="toggleKey" class="icon-btn" title="Show">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+            </button>
+          </div>
+        </div>
+
+        <div class="field">
+          <label>Port</label>
+          <input type="text" id="port" value="27123" placeholder="27123">
+        </div>
+
+        <div class="field">
+          <label class="check">
+            <input type="checkbox" id="useHttps">Use HTTPS (port 27124)
+          </label>
+          <span class="hint">Enable if you have HTTPS server enabled in plugin</span>
+        </div>
+
+        <div class="btn-row">
+          <button id="connectBtn" class="btn primary">Connect</button>
+          <button id="testBtn" class="btn secondary">Test</button>
+        </div>
+        <div id="testResult" class="test-result" style="display:none"></div>
+      </div>
+
+      <div id="fsSetup" style="display:none">
+        <div class="field">
+          <label>Vault Folder</label>
+          <button id="selectFolder" class="btn secondary">Select Folder</button>
+          <span id="vaultDisplay" class="hint">No folder selected</span>
+        </div>
+        <button id="saveFs" class="btn primary">Save</button>
+      </div>
+    </div>
+
+    <div id="settings" class="panel" style="display:none">
+      <h2>Vault Location</h2>
+      <div class="field">
+        <label>Obsidian Vault Path</label>
+        <div class="vault-picker">
+          <button id="selectVaultFolder" class="btn secondary">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+            Select Vault Folder
+          </button>
+          <div id="vaultPathDisplay" class="vault-path-display">
+            <span class="vault-path-text">No folder selected</span>
+            <button id="clearVault" class="clear-btn" title="Clear" style="display:none">×</button>
+          </div>
+        </div>
+        <span class="hint">Click to browse and select your Obsidian vault folder</span>
+      </div>
+
+      <h2>Auto-Capture</h2>
+      <div class="field">
+        <label class="check">
+          <input type="checkbox" id="autoCapture" checked>Enable auto-capture
+        </label>
+        <span class="hint">Automatically saves when new messages appear</span>
+      </div>
+      <div class="field">
+        <label>Delay after new message (ms)</label>
+        <input type="text" id="autoCaptureDelay" value="5000" placeholder="5000">
+        <span class="hint">Wait time before auto-saving (default: 5000ms)</span>
+      </div>
+
+      <h2>Storage</h2>
+      <div class="field"><label>Capture Folder Name</label><input type="text" id="captureFolder" value="AI-Brain"></div>
+      <div class="field"><label class="check"><input type="checkbox" id="generateGraph" checked>Generate graph connections</label></div>
+
+      <button id="saveSettings" class="btn primary" style="margin-top:12px">Save Settings</button>
+      <div id="saveResult" class="test-result" style="display:none"></div>
+    </div>
+
+    <div id="security" class="panel" style="display:none">
+      <h2>Privacy</h2>
+      <div class="field"><label class="check"><input type="checkbox" id="excludeUrls">Exclude source URLs</label></div>
+      <div class="field"><label class="check"><input type="checkbox" id="anonymizeData">Anonymize AI model names</label></div>
+      <div class="privacy-box">
+        <h3>Guarantees</h3>
+        <ul>
+          <li>Zero external network requests</li>
+          <li>No analytics or tracking</li>
+          <li>All data stays on your machine</li>
+          <li>Open source - auditable code</li>
+          <li>No accounts required</li>
+        </ul>
+      </div>
+    </div>
+
+    <div id="capturePanel" class="panel" style="display:none">
+      <h2>Capture</h2>
+      <button id="captureBtn" class="btn secondary">Capture Current Chat</button>
+      <div class="stats">Captured: <span id="count">0</span> conversations</div>
+    </div>
+
+    <div class="footer"><button id="helpBtn" class="link">Need help?</button></div>
+  </div>
+
+  <div id="helpModal" class="modal" style="display:none">
+    <div class="modal-box">
+      <button id="closeModal" class="close">&times;</button>
+      <h2>Setup Guide</h2>
+
+      <h3>Step 1: Install Plugin in Obsidian</h3>
+      <ol>
+        <li>Open Obsidian → Settings → Community plugins → Browse</li>
+        <li>Search "Local REST API" → Install → Enable</li>
+        <li>Click the gear icon ⚙️ next to it</li>
+        <li>Copy the <strong>API Key</strong></li>
+        <li>Enable "Non-encrypted (HTTP) server" if not enabled</li>
+      </ol>
+
+      <h3>Step 2: Connect Brain Extension</h3>
+      <ol>
+        <li>Click Brain icon in Chrome</li>
+        <li>Paste your API Key</li>
+        <li>Port: <code>27123</code> (HTTP) or <code>27124</code> (HTTPS)</li>
+        <li>Click "Connect" then "Test" to verify</li>
+      </ol>
+
+      <h3>Step 3: Capture Chats</h3>
+      <ol>
+        <li>Go to ChatGPT, Claude, Gemini, or Grok</li>
+        <li>Click "Capture to Brain" button</li>
+        <li>Check your Obsidian vault → <code>AI-Brain/</code> folder</li>
+      </ol>
+
+      <h3>Connection Flow</h3>
+      <pre>Chrome Extension → HTTP → localhost → Obsidian Plugin → Your Vault</pre>
+
+      <h3>Troubleshooting</h3>
+      <ul>
+        <li><strong>Connection failed?</strong> Make sure Obsidian is open and plugin is enabled</li>
+        <li><strong>HTTP not working?</strong> Enable "Non-encrypted (HTTP) server" in plugin settings</li>
+        <li><strong>HTTPS not working?</strong> Check the "Use HTTPS" checkbox and use port 27124</li>
+        <li><strong>Files not appearing?</strong> Check your vault's <code>AI-Brain/</code> folder</li>
+      </ul>
+    </div>
+  </div>
+  <script src="popup.js"></script>
+</body>
+</html>

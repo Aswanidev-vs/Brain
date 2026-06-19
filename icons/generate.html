@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+<head><title>Generate Icons</title></head>
+<body>
+<h2>Right-click each canvas → Save Image As</h2>
+<canvas id="c16" width="16" height="16"></canvas> icon16.png
+<canvas id="c48" width="48" height="48"></canvas> icon48.png
+<canvas id="c128" width="128" height="128"></canvas> icon128.png
+<script>
+function draw(id, size) {
+  const c = document.getElementById(id);
+  const ctx = c.getContext('2d');
+  const g = ctx.createLinearGradient(0,0,size,size);
+  g.addColorStop(0,'#667eea'); g.addColorStop(1,'#764ba2');
+  ctx.beginPath(); ctx.arc(size/2,size/2,size*0.47,0,Math.PI*2);
+  ctx.fillStyle=g; ctx.fill();
+  ctx.strokeStyle='white'; ctx.lineWidth=size*0.03;
+  ctx.beginPath(); ctx.arc(size/2,size/2,size*0.35,0,Math.PI*2); ctx.stroke();
+  ctx.beginPath(); ctx.arc(size/2,size/2,size*0.15,0,Math.PI*2);
+  ctx.fillStyle='white'; ctx.fill();
+}
+draw('c16',16); draw('c48',48); draw('c128',128);
+</script>
+</body>
+</html>
