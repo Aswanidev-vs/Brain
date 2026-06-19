@@ -1,0 +1,640 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Brain</title>
+  <meta name="description" content="A small Chrome extension that captures AI conversations into an Obsidian vault. Source-level documentation." />
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,300..700;1,6..72,300..700&family=JetBrains+Mono:wght@400;500;600&display=swap"
+    rel="stylesheet"
+  />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <!-- top bar -->
+  <header class="topbar">
+    <a href="#top" class="brand">
+      <svg viewBox="0 0 32 32" width="20" height="20" aria-hidden="true">
+        <path d="M16 4c-3 0-5 2-6 5-2 0-4 2-4 5 0 2 1 4 3 5-1 1-1 2-1 3 0 3 3 5 6 5 1 1 2 1 2 1s1 0 2-1c3 0 6-2 6-5 0-1 0-2-1-3 2-1 3-3 3-5 0-3-2-5-4-5-1-3-3-5-6-5z" fill="none" stroke="currentColor" stroke-width="1.4"/>
+        <path d="M10 14c0 3 2 5 6 5s6-2 6-5" fill="none" stroke="currentColor" stroke-width="1.2"/>
+        <circle cx="16" cy="19" r="1.6" fill="currentColor"/>
+      </svg>
+      <span>Brain</span>
+    </a>
+    <nav class="topnav">
+      <a href="#idea">Idea</a>
+      <a href="#arch">Architecture</a>
+      <a href="#extract">Extraction</a>
+      <a href="#save">Saving</a>
+      <a href="#build">Build</a>
+      <a href="#output">Output</a>
+      <a href="#security">Security</a>
+    </nav>
+  </header>
+
+  <main id="top" class="page">
+
+    <!-- hero -->
+    <section class="hero">
+      <p class="hero-eyebrow">A Chrome extension · v0.1.0 · MIT</p>
+      <h1 class="hero-title">
+        <em>Brain</em>
+      </h1>
+      <p class="hero-sub">
+        Captures AI conversations from ChatGPT, Claude, Gemini, and Grok into an Obsidian vault you own. Eight hundred lines of JavaScript, no dependencies, no network egress, no telemetry.
+      </p>
+      <ul class="hero-facts">
+        <li><span>Manifest</span>MV3</li>
+        <li><span>Sources</span>6 files</li>
+        <li><span>Lines</span>~900</li>
+        <li><span>Build</span>none</li>
+        <li><span>Network</span>127.0.0.1 only</li>
+      </ul>
+    </section>
+
+    <!-- overview -->
+    <section class="block" id="idea">
+      <p class="tag">Overview</p>
+      <h2>What it is, and what it isn't.</h2>
+      <p>
+        The popular AI chat clients give you a scrollback, a share button, and an account lock-in. They do not give you a file. Obsidian, on the other hand, <em>is</em> a folder — every note is a <code>.md</code> file on your disk. Brain is the bridge between the two. It runs in the browser, watches the chat you are having, and writes a copy of the conversation into your Obsidian vault the moment it lands.
+      </p>
+      <p>
+        By default it waits five seconds after the AI finishes its turn, then captures. The output is plain Markdown with YAML frontmatter — the same shape Obsidian expects for properties and tags. Optionally it also writes a companion <em>graph note</em> that links the conversation to its extracted keywords and topic tags, so the note shows up wired into your Obsidian graph.
+      </p>
+      <p>
+        Three rules shape every design decision: it is <strong>local only</strong> — no network destination other than <code>127.0.0.1</code>; it is <strong>auditable</strong> — the entire source tree fits in a single reading session, with no build step and no dependencies; and it is <strong>reversible</strong> — the output is a folder of <code>.md</code> files you can delete, sync, version-control, or simply stop using without losing your data.
+      </p>
+    </section>
+
+    <!-- architecture -->
+    <section class="block" id="arch">
+      <p class="tag">Architecture</p>
+      <h2>Four contexts, one extension.</h2>
+      <p>
+        A Manifest V3 extension is not one program. It is a federation of small programs, each running in its own context with its own lifetime, communicating through an asynchronous messaging layer. Brain uses four of those contexts, and the design of the whole system is really about deciding which context owns which concern.
+      </p>
+
+      <div class="parts">
+        <div class="part">
+          <span class="part-no">01</span>
+          <h3>Manifest</h3>
+          <p>The static contract. Tells Chrome which hosts the extension is allowed to touch, which scripts to inject where, which permissions to request, and which icon to put in the toolbar. Not code — the request for permission to run code.</p>
+          <p class="ref">manifest.json</p>
+        </div>
+        <div class="part">
+          <span class="part-no">02</span>
+          <h3>Content script</h3>
+          <p>An IIFE that runs inside the AI chat page's DOM. Recognises the platform, extracts the messages, and watches for new ones. Cannot make privileged calls — sends messages to the service worker instead.</p>
+          <p class="ref">content/platform.js</p>
+        </div>
+        <div class="part">
+          <span class="part-no">03</span>
+          <h3>Service worker</h3>
+          <p>A short-lived background script. The only context that can call the Obsidian REST API, write files via the downloads API, or read and write <code>chrome.storage</code>. Also generates the Markdown.</p>
+          <p class="ref">background/service-worker.js</p>
+        </div>
+        <div class="part">
+          <span class="part-no">04</span>
+          <h3>Popup</h3>
+          <p>A tiny HTML page that opens when you click the toolbar icon. The only surface the user directly interacts with — connection setup, vault selection, auto-capture settings, privacy toggles, manual capture.</p>
+          <p class="ref">popup/popup.{html,css,js}</p>
+        </div>
+      </div>
+
+      <figure class="diagram">
+        <svg viewBox="0 0 760 220" class="d-svg" role="img" aria-label="Data flow">
+          <line x1="100" y1="60" x2="240" y2="60" class="d-line"/><polygon points="240,60 232,56 232,64" class="d-arr"/>
+          <line x1="380" y1="60" x2="520" y2="60" class="d-line"/><polygon points="520,60 512,56 512,64" class="d-arr"/>
+          <line x1="600" y1="100" x2="600" y2="170" class="d-line"/><polygon points="600,170 596,162 604,162" class="d-arr"/>
+
+          <g class="d-node"><rect x="20"  y="30" width="160" height="60" rx="3"/><text x="100" y="58" text-anchor="middle" class="d-lbl">AI chat page</text><text x="100" y="76" text-anchor="middle" class="d-sub">chatgpt · claude · gemini · grok</text></g>
+          <g class="d-node"><rect x="240" y="30" width="140" height="60" rx="3"/><text x="310" y="58" text-anchor="middle" class="d-lbl">Content script</text><text x="310" y="76" text-anchor="middle" class="d-sub">platform.js</text></g>
+          <g class="d-node emph"><rect x="520" y="30" width="160" height="60" rx="3"/><text x="600" y="58" text-anchor="middle" class="d-lbl-l">Service worker</text><text x="600" y="76" text-anchor="middle" class="d-sub-l">service-worker.js</text></g>
+          <g class="d-node"><rect x="320" y="160" width="180" height="50" rx="3"/><text x="410" y="185" text-anchor="middle" class="d-lbl">Obsidian REST API</text><text x="410" y="200" text-anchor="middle" class="d-sub">127.0.0.1:27123</text></g>
+
+          <text x="160" y="50" class="d-ann">reads DOM</text>
+          <text x="430" y="50" class="d-ann">sendMessage</text>
+          <text x="610" y="135" class="d-ann">PUT /vault/...</text>
+          <text x="410" y="155" class="d-ann" text-anchor="end">fetch</text>
+        </svg>
+      </figure>
+    </section>
+
+    <!-- manifest -->
+    <section class="block" id="manifest">
+      <p class="tag">The contract</p>
+      <h2>The manifest.</h2>
+      <p>
+        The manifest is thirty-three lines. There is almost nothing decorative in it — every key is load-bearing, because Chrome refuses to install the extension if any of them are wrong. The permissions, the host list, the content-script matches, and the icons are all there because Chrome asks for them up front.
+      </p>
+
+      <figure class="codeblock">
+        <header class="cb-head"><span class="cb-file">manifest.json</span><button class="cb-copy" data-copy>copy</button></header>
+<pre><code>{
+  "manifest_version": 3,
+  "name": "Brain",
+  "version": "0.1.0",
+  "description": "Capture AI chats from ChatGPT, Claude, Gemini, Grok. Store in Obsidian with graph connections.",
+  "permissions": ["activeTab", "storage", "scripting", "tabs"],
+  "host_permissions": [
+    "https://chat.openai.com/*", "https://chatgpt.com/*",
+    "https://claude.ai/*", "https://gemini.google.com/*",
+    "https://grok.com/*", "https://x.com/*",
+    "http://127.0.0.1:27123/*", "https://127.0.0.1:27124/*"
+  ],
+  "action": {
+    "default_popup": "popup/popup.html",
+    "default_icon": { "16": "icons/icon16.png", "48": "icons/icon48.png", "128": "icons/icon128.png" }
+  },
+  "background": { "service_worker": "background/service-worker.js" },
+  "content_scripts": [
+    { "matches": ["https://chat.openai.com/*", "https://chatgpt.com/*"],
+      "js": ["content/platform.js"], "css": ["styles/capture-button.css"],
+      "run_at": "document_idle" },
+    { "matches": ["https://claude.ai/*"], "js": ["content/platform.js"], "css": ["styles/capture-button.css"], "run_at": "document_idle" },
+    { "matches": ["https://gemini.google.com/*"], "js": ["content/platform.js"], "css": ["styles/capture-button.css"], "run_at": "document_idle" },
+    { "matches": ["https://grok.com/*", "https://x.com/*"], "js": ["content/platform.js"], "css": ["styles/capture-button.css"], "run_at": "document_idle" }
+  ]
+}</code></pre>
+      </figure>
+
+      <p>
+        There are two distinct kinds of hosts in <code>host_permissions</code>, and it is worth keeping them mentally separated. The six <code>https://…</code> entries are the AI services whose DOM the content script will run on — if you add a new platform, you add a host here <em>and</em> a matching <code>content_scripts</code> entry <em>and</em> a new case in the <code>PLATFORMS</code> map inside <code>platform.js</code>. All three places must agree.
+      </p>
+      <p>
+        The two <code>127.0.0.1</code> entries are the network destinations the service worker is allowed to call. HTTP on port 27123 is the default; HTTPS on 27124 is the opt-in secure variant. Both are present because the popup lets the user pick either.
+      </p>
+    </section>
+
+    <!-- extraction -->
+    <section class="block" id="extract">
+      <p class="tag">Content script</p>
+      <h2>Extraction &amp; auto-capture.</h2>
+      <p>
+        <code>content/platform.js</code> is a single IIFE — about 350 lines — that runs once per matched page. It does five things, in this order: identify which platform the page belongs to, define per-platform extractor functions for messages, title, and message count, insert a floating <em>Capture to Brain</em> button into the page, wire up manual capture (button click → send to service worker), and set up a <code>MutationObserver</code> that watches for new messages and schedules a debounced auto-save.
+      </p>
+
+      <h3>Platform detection</h3>
+
+      <figure class="codeblock">
+        <header class="cb-head"><span class="cb-file">content/platform.js</span><button class="cb-copy" data-copy>copy</button></header>
+<pre><code>const PLATFORMS = {
+  'chat.openai.com': 'ChatGPT', 'chatgpt.com': 'ChatGPT',
+  'claude.ai': 'Claude', 'gemini.google.com': 'Gemini',
+  'grok.com': 'Grok', 'x.com': 'Grok'
+};
+
+const hostname = window.location.hostname;
+const platform = Object.entries(PLATFORMS)
+  .find(([h]) => hostname.includes(h))?.[1];
+if (!platform) return;</code></pre>
+      </figure>
+
+      <p>
+        The early <code>return</code> on the last line is doing a lot of work. The IIFE quietly exits on any page that is not one of the six hosts, which means the floating button and the MutationObserver never get created on, say, <code>google.com/search</code>. The whole file is a no-op in the wrong place.
+      </p>
+
+      <h3>Per-platform extractors</h3>
+
+      <p>
+        Every AI chat site has its own DOM convention, and none of them is stable enough to write a single universal selector. So <code>platform.js</code> defines a small object per platform with three methods: <code>messages()</code>, <code>title()</code>, and <code>getMessageCount()</code>. The methods are written defensively — primary selector, fallback selector, heuristic on class names. Three patterns repeat:
+      </p>
+
+      <ul class="clean">
+        <li><strong>The data-attribute shortcut.</strong> ChatGPT exposes <code>data-message-author-role</code> on every message. If a site gives you such a hook, use it — it is the only selector that won't break when CSS class names change.</li>
+        <li><strong>The class-name scan.</strong> Gemini and Grok do not. You query for things like <code>.user-query</code> and <code>.model-response-text</code>, or scan class substrings like <code>[class*="message"]</code>. Brittle by definition, but the only option, and you write a fallback for the day the class name changes.</li>
+        <li><strong>The alternating-position heuristic.</strong> If neither attribute gives you the role, fall back to "the first message is the user, the second is the assistant" — wrong for conversations that start with the AI, but the last-resort guess that almost always happens to be right.</li>
+      </ul>
+
+      <h3>The signature pattern</h3>
+
+      <p>
+        Auto-capture is harder than manual capture. The user could be scrolling, editing, regenerating, or pasting — and the only signal you have is "the DOM changed." Saving on every mutation would write the same conversation ten times in a second. Brain waits until the new state is <em>stable</em>, using a string signature of the most recent assistant message.
+      </p>
+
+      <figure class="codeblock">
+        <header class="cb-head"><span class="cb-file">content/platform.js · signature helper</span><button class="cb-copy" data-copy>copy</button></header>
+<pre><code>function getLatestAssistantSignature(messages) {
+  const assistantMessage = [...messages].reverse()
+    .find(m => m.role === 'assistant' && m.content);
+  if (!assistantMessage) return '';
+  return `${assistantMessage.role}:${assistantMessage.content.trim()}`;
+}</code></pre>
+      </figure>
+
+      <p>
+        The signature is just the role and the trimmed content of the most recent assistant message. The auto-save timer arms when a new signature first appears, and the save only fires if, when the timer expires, the same signature is still the most recent one. Default delay is 5,000 ms — long enough that a normal-length AI response has finished streaming on a typical connection, short enough that a user clicking away from the tab will not lose their work.
+      </p>
+
+      <h3>The MutationObserver</h3>
+
+      <figure class="codeblock">
+        <header class="cb-head"><span class="cb-file">content/platform.js · the observer</span><button class="cb-copy" data-copy>copy</button></header>
+<pre><code>const observer = new MutationObserver(() => {
+  if (!document.querySelector('.ai-brain-capture-btn')) {
+    createButton();
+  }
+  if (autoCaptureEnabled && !isCapturing && !isAutoSaving) {
+    const msgCount = getMessageCount();
+    const messages = getMessages();
+    const latestAssistantSignature = getLatestAssistantSignature(messages);
+
+    if (msgCount > lastMessageCount &&
+        latestAssistantSignature &&
+        latestAssistantSignature !== lastAssistantSignature) {
+      pendingMessageCount = msgCount;
+      pendingAssistantSignature = latestAssistantSignature;
+      scheduleAutoCapture();
+    }
+  }
+});
+
+observer.observe(document.body, {
+  childList: true, subtree: true, characterData: true
+});</code></pre>
+      </figure>
+
+      <p>
+        The observer fires on three kinds of DOM change: <code>childList</code> (nodes added or removed), <code>subtree</code> (anywhere in the document), and <code>characterData</code> (text changes). The last one is what catches streaming AI responses — the response is rendered character-by-character, and Brain wants to notice that. The <code>createButton()</code> re-check on every mutation is defensive: the chat sites aggressively re-render, and the button can be detached.
+      </p>
+    </section>
+
+    <!-- saving -->
+    <section class="block" id="save">
+      <p class="tag">Service worker</p>
+      <h2>The saving pipeline.</h2>
+      <p>
+        The service worker is the only context that can talk to the Obsidian REST API. The content script hands it a conversation object over <code>chrome.runtime.sendMessage</code>, and the worker takes it from there. There are two things to do: turn the conversation into Markdown, and put that Markdown somewhere durable.
+      </p>
+
+      <h3>The message handler</h3>
+
+      <figure class="codeblock">
+        <header class="cb-head"><span class="cb-file">background/service-worker.js · entry</span><button class="cb-copy" data-copy>copy</button></header>
+<pre><code>chrome.runtime.onMessage.addListener((req, sender, sendResponse) => {
+  if (req.action === 'saveConversation') {
+    saveConversation(req.data).then(r => sendResponse(r));
+    return true;          // keep the channel open
+  }
+});</code></pre>
+      </figure>
+
+      <p>
+        The <code>return true</code> on the last line is the part most people miss. <code>sendResponse</code> is only delivered asynchronously if the listener returns <code>true</code>; without it, the channel closes before <code>saveConversation</code> resolves and the popup receives <code>undefined</code>.
+      </p>
+
+      <h3>Two save paths</h3>
+
+      <p>Brain supports two ways of getting the file into Obsidian. The user picks in the popup.</p>
+
+      <div class="compare">
+        <div class="cmp">
+          <h4>A · Obsidian Local REST API</h4>
+          <p><strong>How:</strong> HTTP <code>PUT</code> to <code>http://127.0.0.1:27123/vault/&lt;path&gt;</code> with a <code>Bearer</code> token.</p>
+          <p><strong>Pros:</strong> Files appear in Obsidian immediately. Vault does not have to be at a known filesystem path. Works on macOS, Linux, Windows without browser-level file permissions.</p>
+          <p><strong>Cons:</strong> Requires the <em>Local REST API</em> community plugin to be installed, enabled, and configured with an API key.</p>
+        </div>
+        <div class="cmp">
+          <h4>B · Direct download</h4>
+          <p><strong>How:</strong> <code>chrome.downloads.download</code> with a <code>data:</code> URL of the Markdown.</p>
+          <p><strong>Pros:</strong> Zero plugin required. Works the moment the extension is installed.</p>
+          <p><strong>Cons:</strong> Files land in Chrome's download folder. The user is responsible for moving them into the vault.</p>
+        </div>
+      </div>
+
+      <h3>PUT vs POST: the GET-then-decide trick</h3>
+
+      <figure class="codeblock">
+        <header class="cb-head"><span class="cb-file">background/service-worker.js · create</span><button class="cb-copy" data-copy>copy</button></header>
+<pre><code>async function createFileViaAPI(apiKey, baseUrl, path, content) {
+  const url = `${baseUrl}/vault/${encodeURIComponent(path)}`;
+
+  const checkRes = await fetch(url, {
+    method: 'GET',
+    headers: {
+      'Authorization': `Bearer ${apiKey}`,
+      'Accept': 'application/json'
+    }
+  });
+
+  const method = checkRes.ok ? 'PUT' : 'POST';
+
+  const res = await fetch(url, {
+    method,
+    headers: {
+      'Authorization': `Bearer ${apiKey}`,
+      'Content-Type': 'text/markdown',
+      'Accept': 'application/json'
+    },
+    body: content
+  });
+  if (!res.ok) throw new Error(`${res.status}: ${await res.text()}`);
+  return true;
+}</code></pre>
+      </figure>
+
+      <h3>Keyword &amp; topic extraction</h3>
+
+      <figure class="codeblock">
+        <header class="cb-head"><span class="cb-file">background/service-worker.js · extraction</span><button class="cb-copy" data-copy>copy</button></header>
+<pre><code>const STOP_WORDS = new Set([/* ~150 common English words */]);
+
+const TOPIC_PATTERNS = [
+  [/javascript|react|node|typescript|vue|angular/i, 'JavaScript'],
+  [/python|django|flask|fastapi|pandas/i,           'Python'],
+  [/api|endpoint|rest|graphql|http/i,               'API'],
+  [/database|sql|mongo|postgres|mysql|redis/i,      'Database'],
+  [/machine.?learning|neural|deep.?learning/i,      'Machine Learning'],
+  [/css|style|layout|flexbox|grid|tailwind/i,       'CSS'],
+  [/git|commit|branch|merge|pull.?request/i,        'Git'],
+  [/docker|container|kubernetes|k8s|deploy/i,       'DevOps'],
+  [/security|auth|encrypt|token|password/i,         'Security'],
+  [/test|testing|jest|mocha|cypress|spec/i,         'Testing']
+];
+
+function extractKeywords(messages) {
+  const counts = {};
+  messages.forEach(m => {
+    m.content.toLowerCase()
+      .replace(/[^a-z0-9\s]/g, '')
+      .split(/\s+/)
+      .filter(w => w.length > 3 && !STOP_WORDS.has(w))
+      .forEach(w => counts[w] = (counts[w] || 0) + 1);
+  });
+  return Object.entries(counts)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 10)
+    .map(([w]) => w);
+}</code></pre>
+      </figure>
+
+      <p>
+        The keyword extractor is intentionally dumb: lowercase, strip punctuation, drop stopwords and short words, count, take the top ten. The topic extractor matches regex patterns and labels them. Both are pure string operations, deterministic, inspectable, and fast — three properties an LLM cannot promise.
+      </p>
+    </section>
+
+    <!-- popup -->
+    <section class="block" id="popup">
+      <p class="tag">Popup</p>
+      <h2>The popup.</h2>
+      <p>
+        The popup opens in a fixed 380-pixel-wide window above the toolbar icon, structured as three tabs: Setup, Settings, Privacy. A fourth hidden panel — Capture — only appears after a successful connection, because there is no point in showing a Capture button that would fail.
+      </p>
+
+      <h3>The connection test</h3>
+
+      <figure class="codeblock">
+        <header class="cb-head"><span class="cb-file">popup/popup.js · the test</span><button class="cb-copy" data-copy>copy</button></header>
+<pre><code>async function testAPI(key, port, useHttps) {
+  try {
+    const protocol = useHttps ? 'https' : 'http';
+    const c = new AbortController();
+    const t = setTimeout(() => c.abort(), 3000);
+    const r = await fetch(`${protocol}://127.0.0.1:${port}/`, {
+      headers: {
+        'Authorization': `Bearer ${key}`,
+        'Accept': 'application/json'
+      },
+      signal: c.signal
+    });
+    clearTimeout(t);
+    return r.ok;
+  } catch { return false; }
+}</code></pre>
+      </figure>
+
+      <p>
+        A three-second timeout is the practical compromise: the Obsidian plugin is local, so the round-trip should be well under 100 ms in the happy case, but if the plugin is disabled or Obsidian is not running, you want the UI to fail visibly and quickly rather than spin forever. <em>Connected</em> is a derived fact, not a stored one — the popup calls <code>testAPI</code> on every load and trusts the network's answer.
+      </p>
+
+      <h3>Storage</h3>
+
+      <div class="kv">
+        <div><code>apiKey</code><span>Bearer token for the REST plugin</span></div>
+        <div><code>port</code><span>HTTP port — 27123 default</span></div>
+        <div><code>useHttps</code><span>Switch to https://127.0.0.1:27124</span></div>
+        <div><code>connectionMethod</code><span>"api" | "fs"</span></div>
+        <div><code>captureFolder</code><span>Top-level vault folder, default "AI-Brain"</span></div>
+        <div><code>generateGraph</code><span>Write companion graph note</span></div>
+        <div><code>autoCapture</code><span>Master switch for the observer-based save</span></div>
+        <div><code>autoCaptureDelay</code><span>Debounce, ms — default 5000</span></div>
+        <div><code>excludeUrls</code><span>Drop the source URL from frontmatter</span></div>
+        <div><code>anonymizeData</code><span>Replace platform name with Model A/B/C/D</span></div>
+        <div><code>captureCount</code><span>Lifetime tally</span></div>
+      </div>
+
+      <p>
+        All of this lives in <code>chrome.storage.sync</code>, which syncs across signed-in Chrome browsers. The cap is small (about 8 KB total) but more than enough for this set of preferences.
+      </p>
+    </section>
+
+    <!-- build -->
+    <section class="block" id="build">
+      <p class="tag">Recipe</p>
+      <h2>Build a variation.</h2>
+      <p>
+        Brain is short enough to be a good first project, and a good template. This is a recipe. Do these things in this order and you will end up with a working extension that does something different.
+      </p>
+
+      <ol class="steps">
+        <li>
+          <span class="step-no">01</span>
+          <div>
+            <strong>Make the manifest yours.</strong>
+            Copy the folder. Change <code>"name"</code> and <code>"version"</code>. Add the hosts you want to capture from into <code>"host_permissions"</code>. For each new host, add a matching entry in <code>"content_scripts"</code>. <em>Three places must agree</em> — the host list, the <code>content_scripts.matches</code> list, and the platform map in the content script.
+          </div>
+        </li>
+        <li>
+          <span class="step-no">02</span>
+          <div>
+            <strong>Write the extractor.</strong>
+            In <code>content/platform.js</code>, change the <code>PLATFORMS</code> map. Add a case to <code>getExtractors()</code> with three methods — <code>messages()</code>, <code>title()</code>, <code>getMessageCount()</code>. Spend the time here. Inspect the target DOM, find a data-attribute you can rely on, and fall back to class-name scan only if there is no other way.
+          </div>
+        </li>
+        <li>
+          <span class="step-no">03</span>
+          <div>
+            <strong>Decide the output shape.</strong>
+            The Markdown generator in <code>service-worker.js</code> is a pure function. Rewrite <code>generateMarkdown</code> to produce whatever shape you want — Notion JSON, CSV, a Daily-Journal entry, an email digest. The saving machinery does not care what string you give it.
+          </div>
+        </li>
+        <li>
+          <span class="step-no">04</span>
+          <div>
+            <strong>Wire a new sink (optional).</strong>
+            To save somewhere other than Obsidian, add a third branch in <code>saveConversation</code> next to the <code>api</code> and <code>fs</code> branches. Read <code>connectionMethod</code> from storage, dispatch on it, and write the file. Inside the browser sandbox you are limited to <code>chrome.downloads</code> and whatever your content script can do on a privileged origin.
+          </div>
+        </li>
+        <li>
+          <span class="step-no">05</span>
+          <div>
+            <strong>Test it.</strong>
+            <code>chrome://extensions</code> → Developer mode → Load unpacked → point at the folder. Open the target site, click the toolbar icon, complete the connection, click the floating button. Watch the service-worker console (under the extension's "Service worker" link in <code>chrome://extensions</code>) for the <code>Brain:</code> log lines.
+          </div>
+        </li>
+      </ol>
+    </section>
+
+    <!-- output -->
+    <section class="block" id="output">
+      <p class="tag">Output</p>
+      <h2>The saved file.</h2>
+      <p>
+        The Markdown that lands in your vault has a small fixed shape. The frontmatter is what Obsidian uses for properties and tags; the body is what you read.
+      </p>
+
+      <figure class="codeblock">
+        <header class="cb-head"><span class="cb-file">AI-Brain/chatgpt/2024-01-15-async-fetch-with-retries.md</span><button class="cb-copy" data-copy>copy</button></header>
+<pre><code>---
+title: "Async fetch with retries"
+platform: ChatGPT
+captured: 2024-01-15T10:30:00.000Z
+source_url: "https://chatgpt.com/c/abc-123"
+tags:
+  - ai-conversation
+  - chatgpt
+---
+
+# Async fetch with retries
+
+**Platform:** ChatGPT
+**Captured:** 1/15/2024, 10:30:00 AM
+**Source:** [Original](https://chatgpt.com/c/abc-123)
+
+---
+
+**User:**
+
+Write me a fetch wrapper that retries on 5xx with exponential backoff.
+
+---
+
+**ChatGPT:**
+
+Here is a small wrapper using AbortController and a setTimeout-based
+backoff loop. It is intentionally minimal — no dependencies, ~40 lines.
+
+async function fetchRetry(url, { tries = 4, base = 250 } = {}) {
+  for (let i = 0; i &lt; tries; i++) {
+    try {
+      const r = await fetch(url);
+      if (r.ok) return r;
+      if (r.status &lt; 500) throw new Error(`HTTP ${r.status}`);
+    } catch (e) {
+      if (i === tries - 1) throw e;
+      await new Promise(r =&gt; setTimeout(r, base * 2 ** i));
+    }
+  }
+}
+
+The key idea is to distinguish transient (5xx, network) from terminal
+(4xx) failures, and only retry the former.
+
+---
+
+---
+*Captured with Brain Extension*</code></pre>
+      </figure>
+
+      <p>Vault tree:</p>
+
+      <pre class="tree">YourVault/
+└── AI-Brain/
+    ├── chatgpt/
+    │   ├── 2024-01-15-async-fetch-with-retries.md
+    │   └── …
+    ├── claude/
+    ├── gemini/
+    ├── grok/
+    └── _graphs/
+        ├── 2024-01-15-async-fetch-with-retries-graph.md
+        └── …</pre>
+
+      <h3>Graph note</h3>
+
+      <figure class="codeblock">
+        <header class="cb-head"><span class="cb-file">AI-Brain/_graphs/…-graph.md</span><button class="cb-copy" data-copy>copy</button></header>
+<pre><code>---
+type: graph-note
+source: "Async fetch with retries"
+platform: ChatGPT
+captured: 2024-01-15T10:30:00.000Z
+keywords:
+  - fetch
+  - retries
+  - backoff
+  - jitter
+  - promise
+---
+
+# Graph: Async fetch with retries
+
+**Source:** [[Async fetch with retries]]
+**Platform:** ChatGPT
+
+## Keywords
+
+- [[fetch]]
+- [[retries]]
+- [[backoff]]
+- [[jitter]]
+- [[promise]]
+
+## Topics
+
+- [[JavaScript]]
+- [[API]]</code></pre>
+      </figure>
+
+      <p>
+        The keywords and topics are emitted as <code>[[wikilinks]]</code>, which is what makes them show up as connected nodes in Obsidian's Graph View.
+      </p>
+    </section>
+
+    <!-- security -->
+    <section class="block" id="security">
+      <p class="tag">Trust</p>
+      <h2>Security &amp; threat model.</h2>
+      <p>
+        The extension can read and modify the DOM of the six configured AI hosts; read and write <code>chrome.storage.sync</code>; make HTTP requests to <code>127.0.0.1:27123</code> and <code>127.0.0.1:27124</code> only; send messages between the popup, content scripts, and service worker; and trigger downloads (in the fallback save path).
+      </p>
+      <p>
+        It cannot make requests to any host other than the configured ones — there is no <code>"*://*/*"</code> pattern in the host list, and there never will be. It cannot execute arbitrary user-supplied code at runtime — no <code>eval</code>, no remote script tag, no <code>Function()</code> constructor. It cannot phone home — search the source for <code>fetch</code> and you will find exactly one prefix: <code>127.0.0.1</code>.
+      </p>
+      <p>
+        An extension with content-script access to a host is, in principle, able to do anything a script on that host can do. This is true of every browser extension you have ever installed; the question is always whether you trust the code. Brain is short enough to read, and the source is the single source of truth.
+      </p>
+      <p>
+        Two privacy toggles in the popup close most residual concern. <strong>Exclude source URLs</strong> drops the URL of the conversation from the frontmatter and body. <strong>Anonymize AI model names</strong> replaces the platform name (ChatGPT, Claude, Gemini, Grok) with a generic letter (Model A, Model B, …) so a casual reader of your vault cannot tell which model said what.
+      </p>
+    </section>
+
+    <!-- troubleshooting -->
+    <section class="block" id="trouble">
+      <p class="tag">Notes</p>
+      <h2>Troubleshooting.</h2>
+      <div class="kv trouble">
+        <div><strong>"Not connected"</strong><span>Obsidian not running, or the Local REST API plugin is disabled. Open Obsidian, enable the plugin, confirm the HTTP server is on.</span></div>
+        <div><strong>API error 401</strong><span>Wrong API key. Open the plugin's settings, copy the key, paste it into Brain.</span></div>
+        <div><strong>Capture button missing on an AI site</strong><span>Host not in the manifest's <code>content_scripts.matches</code>. Add the host. Reload the extension.</span></div>
+        <div><strong>Auto-capture not firing</strong><span>Master switch off, or delay too short for the response to settle. Popup → Settings → enable auto-capture; raise the delay to 7–10s.</span></div>
+        <div><strong>Saved file is empty</strong><span>Extractor selectors don't match the site's current DOM. Open DevTools, find the new selector, update the matching case in <code>platform.js</code>.</span></div>
+        <div><strong>Files land in Downloads instead of the vault</strong><span><code>connectionMethod</code> is <code>fs</code> (or unset). Switch to the API path in the Setup tab and re-save.</span></div>
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="foot">
+    <p>Brain · v0.1.0 · MIT · source on disk</p>
+  </footer>
+
+  <script src="app.js" defer></script>
+</body>
+</html>

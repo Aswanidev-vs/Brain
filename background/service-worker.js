@@ -52,9 +52,8 @@ function generateMarkdown(c, settings = {}) {
   md += settings.excludeUrls ? '\n' : `**Source:** [Original](${c.url})\n\n`;
   md += `---\n\n`;
   c.messages.forEach((m, i) => {
-    const icon = m.role === 'user' ? '👤' : '🤖';
-    const name = m.role === 'user' ? 'You' : c.platform;
-    md += `## ${icon} ${name}\n\n${m.content}\n\n`;
+    const speaker = m.role === 'user' ? 'User' : c.platform;
+    md += `**${speaker}:**\n\n${m.content}\n\n`;
     if (i < c.messages.length - 1) md += `---\n\n`;
   });
   md += `\n---\n*Captured with Brain Extension*`;
