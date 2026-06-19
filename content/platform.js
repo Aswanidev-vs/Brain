@@ -10,14 +10,25 @@
   if (!platform) return;
 
   let autoCaptureEnabled = false;
+  let autoCaptureDelay = 5000;
   let lastCaptureTime = 0;
   let lastMessageCount = 0;
+  let pendingMessageCount = 0;
+  let lastAssistantSignature = '';
+  let pendingAssistantSignature = '';
   let autoSaveTimeout = null;
   let isCapturing = false;
+  let isAutoSaving = false;
 
   chrome.storage.sync.get(['autoCapture', 'autoCaptureDelay'], (settings) => {
     autoCaptureEnabled = settings.autoCapture !== false;
+    autoCaptureDelay = settings.autoCaptureDelay || 5000;
   });
+
+  function readText(el) {
+    if (!el) return '';
+    return (el.innerText || el.textContent || '').trim();
+  }
 
   function getExtractors() {
     switch (platform) {
@@ -25,12 +36,12 @@
         return {
           messages: () => [...document.querySelectorAll('[data-message-author-role]')].map(el => ({
             role: el.getAttribute('data-message-author-role') === 'user' ? 'user' : 'assistant',
-            content: (el.querySelector('.markdown') || el.querySelector('.whitespace-pre-wrap') || el).innerText.trim()
+            content: readText(el.querySelector('.markdown') || el.querySelector('.whitespace-pre-wrap') || el)
           })),
           title: () => {
             const t = document.querySelector('title')?.textContent?.replace(' | ChatGPT', '').trim();
             if (t && t !== 'ChatGPT') return t;
-            const f = document.querySelector('[data-message-author-role="user"]')?.innerText?.trim();
+            const f = readText(document.querySelector('[data-message-author-role="user"]'));
             return f ? f.substring(0, 60) : null;
           },
           getMessageCount: () => document.querySelectorAll('[data-message-author-role]').length
@@ -42,7 +53,7 @@
             const seen = new Set();
 
             document.querySelectorAll('p, li, h1, h2, h3, h4, h5, h6, pre, blockquote').forEach(el => {
-              const text = el.innerText.trim();
+              const text = readText(el);
               if (text.length < 5 || seen.has(text)) return;
               if (text.includes('Write a message') || text.includes('Settings') || text.includes('Keyboard')) return;
               if (text.includes('Claude Fable') || text.includes('Learn more')) return;
@@ -55,7 +66,7 @@
 
             if (msgs.length === 0) {
               document.querySelectorAll('[class*="prose"], [class*="markdown"]').forEach(el => {
-                const text = el.innerText.trim();
+                const text = readText(el);
                 if (text.length > 10 && !seen.has(text)) {
                   seen.add(text);
                   msgs.push({
@@ -70,7 +81,8 @@
           },
           title: () => {
             const h = document.querySelector('h1');
-            if (h && h.textContent.trim() !== 'Claude') return h.textContent.trim();
+            const title = readText(h);
+            if (title && title !== 'Claude') return title;
             return null;
           },
           getMessageCount: () => document.querySelectorAll('p').length
@@ -80,14 +92,14 @@
           messages: () => {
             const msgs = [];
             document.querySelectorAll('.user-query, .query-text').forEach(el => {
-              msgs.push({ role: 'user', content: el.innerText.trim() });
+              msgs.push({ role: 'user', content: readText(el) });
             });
             document.querySelectorAll('.model-response-text, .response-container').forEach(el => {
-              msgs.push({ role: 'assistant', content: el.innerText.trim() });
+              msgs.push({ role: 'assistant', content: readText(el) });
             });
             if (msgs.length === 0) {
               document.querySelectorAll('[class*="message"], [class*="turn"]').forEach(el => {
-                const content = el.innerText.trim();
+                const content = readText(el);
                 if (content.length > 10) {
                   msgs.push({
                     role: el.classList.toString().includes('user') ? 'user' : 'assistant',
@@ -100,8 +112,9 @@
           },
           title: () => {
             const h = document.querySelector('h1');
-            if (h && !h.textContent.includes('Gemini')) return h.textContent.trim();
-            const f = document.querySelector('.user-query, .query-text')?.innerText?.trim();
+            const title = readText(h);
+            if (title && !title.includes('Gemini')) return title;
+            const f = readText(document.querySelector('.user-query, .query-text'));
             return f ? f.substring(0, 60) : null;
           },
           getMessageCount: () => document.querySelectorAll('.user-query, .query-text, .model-response-text, .response-container').length
@@ -112,7 +125,7 @@
             const msgs = [];
 
             document.querySelectorAll('[class*="message"]').forEach(el => {
-              const text = el.innerText.trim();
+              const text = readText(el);
               if (text.length < 5 || text.includes('Settings') || text.includes('Keyboard')) return;
               const isUser = el.querySelector('[class*="user"]') !== null ||
                              el.getAttribute('data-role') === 'user';
@@ -124,7 +137,7 @@
 
             if (msgs.length === 0) {
               document.querySelectorAll('[class*="prose"], [class*="markdown"], [class*="text"]').forEach(el => {
-                const text = el.innerText.trim();
+                const text = readText(el);
                 if (text.length > 5 && !text.includes('Grok')) {
                   msgs.push({
                     role: msgs.length % 2 === 0 ? 'user' : 'assistant',
@@ -138,7 +151,8 @@
           },
           title: () => {
             const h = document.querySelector('h1, [class*="title"]');
-            if (h && !h.textContent.includes('Grok')) return h.textContent.trim();
+            const title = readText(h);
+            if (title && !title.includes('Grok')) return title;
             return null;
           },
           getMessageCount: () => document.querySelectorAll('[class*="message"]').length
@@ -149,13 +163,45 @@
   const extractors = getExtractors();
   let captureBtn = null;
 
+  function getMessages() {
+    try {
+      return (extractors.messages?.() || []).filter(m => m && m.content);
+    } catch (e) {
+      console.error('Brain extraction error (messages):', e);
+      return [];
+    }
+  }
+
+  function getTitle() {
+    try {
+      return extractors.title?.() || `${platform} Chat ${new Date().toLocaleDateString()}`;
+    } catch (e) {
+      console.error('Brain extraction error (title):', e);
+      return `${platform} Chat ${new Date().toLocaleDateString()}`;
+    }
+  }
+
+  function getMessageCount() {
+    try {
+      return extractors.getMessageCount?.() || 0;
+    } catch (e) {
+      console.error('Brain extraction error (count):', e);
+      return getMessages().length;
+    }
+  }
+
   function createButton() {
     if (captureBtn) return;
     captureBtn = document.createElement('button');
     captureBtn.className = 'ai-brain-capture-btn';
     captureBtn.innerHTML = `<svg class="brain-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z"/><path d="M8 12c0-2.21 1.79-4 4-4s4 1.79 4 4-1.79 4-4 4"/><circle cx="12" cy="12" r="2"/></svg><span>Capture to Brain</span>`;
-    captureBtn.onclick = capture;
+    captureBtn.onclick = () => capture(false);
     document.body.appendChild(captureBtn);
+  }
+
+  function setCaptureButtonLabel(text) {
+    const label = captureBtn?.querySelector('span');
+    if (label) label.textContent = text;
   }
 
   function toast(msg, isError = false) {
@@ -169,18 +215,24 @@
     setTimeout(() => t.remove(), 3000);
   }
 
+  function getLatestAssistantSignature(messages) {
+    const assistantMessage = [...messages].reverse().find(m => m.role === 'assistant' && m.content);
+    if (!assistantMessage) return '';
+    return `${assistantMessage.role}:${assistantMessage.content.trim()}`;
+  }
+
   async function capture(isAuto = false) {
     if (isCapturing) return null;
     isCapturing = true;
 
     if (captureBtn) {
       captureBtn.classList.add('capturing');
-      captureBtn.querySelector('span').textContent = 'Capturing...';
+      setCaptureButtonLabel('Capturing...');
     }
 
     try {
-      const messages = extractors.messages().filter(m => m.content);
-      const title = extractors.title() || `${platform} Chat ${new Date().toLocaleDateString()}`;
+      const messages = getMessages();
+      const title = getTitle();
 
       if (!messages.length) {
         if (!isAuto) toast('No messages found', true);
@@ -195,10 +247,14 @@
       if (response && response.success) {
         if (captureBtn) {
           captureBtn.classList.add('success');
-          captureBtn.querySelector('span').textContent = 'Saved!';
+          setCaptureButtonLabel('Saved!');
         }
         if (!isAuto) toast(`Captured ${messages.length} messages`);
         lastCaptureTime = Date.now();
+        lastMessageCount = Math.max(lastMessageCount, getMessageCount(), messages.length);
+        lastAssistantSignature = getLatestAssistantSignature(messages);
+        pendingMessageCount = lastMessageCount;
+        pendingAssistantSignature = lastAssistantSignature;
         return response;
       } else {
         const errorMsg = response?.error || 'Unknown error';
@@ -213,23 +269,39 @@
       isCapturing = false;
       setTimeout(() => {
         captureBtn?.classList.remove('capturing', 'success');
-        if (captureBtn) captureBtn.querySelector('span').textContent = 'Capture to Brain';
+        setCaptureButtonLabel('Capture to Brain');
       }, 2000);
     }
   }
 
   function scheduleAutoCapture() {
     if (autoSaveTimeout) clearTimeout(autoSaveTimeout);
-    chrome.storage.sync.get(['autoCaptureDelay'], (settings) => {
-      const delay = settings.autoCaptureDelay || 5000;
-      autoSaveTimeout = setTimeout(async () => {
-        const msgCount = extractors.getMessageCount();
-        if (msgCount > lastMessageCount && msgCount > 0) {
+    const targetMessageCount = pendingMessageCount;
+    const targetAssistantSignature = pendingAssistantSignature;
+
+    autoSaveTimeout = setTimeout(async () => {
+      if (!autoCaptureEnabled || isCapturing || isAutoSaving) return;
+
+      const msgCount = getMessageCount();
+      const messages = getMessages();
+      const latestAssistantSignature = getLatestAssistantSignature(messages);
+
+      if (
+        targetMessageCount > lastMessageCount &&
+        msgCount >= targetMessageCount &&
+        msgCount > 0 &&
+        targetAssistantSignature &&
+        latestAssistantSignature === targetAssistantSignature &&
+        latestAssistantSignature !== lastAssistantSignature
+      ) {
+        isAutoSaving = true;
+        try {
           await capture(true);
-          lastMessageCount = msgCount;
+        } finally {
+          isAutoSaving = false;
         }
-      }, delay);
-    });
+      }
+    }, autoCaptureDelay);
   }
 
   function setupAutoCapture() {
@@ -238,10 +310,18 @@
         createButton();
       }
 
-      if (autoCaptureEnabled && !isCapturing) {
-        const msgCount = extractors.getMessageCount();
-        if (msgCount > lastMessageCount) {
-          lastMessageCount = msgCount;
+      if (autoCaptureEnabled && !isCapturing && !isAutoSaving) {
+        const msgCount = getMessageCount();
+        const messages = getMessages();
+        const latestAssistantSignature = getLatestAssistantSignature(messages);
+
+        if (
+          msgCount > lastMessageCount &&
+          latestAssistantSignature &&
+          latestAssistantSignature !== lastAssistantSignature
+        ) {
+          pendingMessageCount = msgCount;
+          pendingAssistantSignature = latestAssistantSignature;
           scheduleAutoCapture();
         }
       }
@@ -252,7 +332,7 @@
   }
 
   chrome.runtime.onMessage.addListener((req) => {
-    if (req.action === 'capture') capture();
+    if (req.action === 'capture') capture(false);
     if (req.action === 'toggleAutoCapture') {
       autoCaptureEnabled = !autoCaptureEnabled;
       toast(`Auto-capture ${autoCaptureEnabled ? 'enabled' : 'disabled'}`);
@@ -263,9 +343,15 @@
     if (changes.autoCapture) {
       autoCaptureEnabled = changes.autoCapture.newValue;
     }
+    if (changes.autoCaptureDelay) {
+      autoCaptureDelay = changes.autoCaptureDelay.newValue || 5000;
+    }
   });
 
   setupAutoCapture();
   createButton();
-  lastMessageCount = extractors.getMessageCount();
+  lastMessageCount = getMessageCount();
+  lastAssistantSignature = getLatestAssistantSignature(getMessages());
+  pendingMessageCount = lastMessageCount;
+  pendingAssistantSignature = lastAssistantSignature;
 })();
