@@ -14,6 +14,10 @@
   <img src="https://img.shields.io/badge/chrome-MV3-purple" alt="Manifest V3">
 </p>
 
+<p align="center">
+  <a href="index.html">Website</a> • <a href="https://github.com/coddingtonbear/obsidian-local-rest-api">Obsidian Plugin</a>
+</p>
+
 ---
 
 ## Features
@@ -38,7 +42,8 @@
 ### 2. Install Obsidian Plugin
 
 1. Open Obsidian → Settings → Community plugins → Browse
-2. Search **"Local REST API"** → Install → Enable
+2. Search **"Local REST API with MCP"** by Adam Coddington → Install → Enable
+
 3. Copy the **API Key** from plugin settings
 4. Enable **HTTP server** (port 27123)
 
@@ -147,6 +152,6 @@ YourVault/
 
 ## Acknowledgements
 
-This project uses the [Obsidian Local REST API](https://github.com/coddingtonbear/obsidian-local-rest-api) plugin by [@coddingtonbear](https://github.com/coddingtonbear) to connect with Obsidian and write notes directly to your vault.
+This project uses the [Local REST API with MCP](https://github.com/coddingtonbear/obsidian-local-rest-api) plugin by Adam Coddington to connect with Obsidian and write notes directly to your vault.
 
 A huge thank you to the maintainers of this incredible plugin that makes the Obsidian integration possible.
