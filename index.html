@@ -510,11 +510,40 @@
         }
 
         /* Responsive */
-        @media (max-width: 768px) {
-            .features-grid { grid-template-columns: 1fr; }
-            .setup-grid { grid-template-columns: 1fr; }
+        @media (max-width: 900px) {
+            .container { padding: 0 24px; }
+            .features-grid { grid-template-columns: repeat(2, 1fr); }
+            .setup-grid { grid-template-columns: 1fr; gap: 32px; }
             .platforms-row { grid-template-columns: repeat(2, 1fr); }
-            .footer-inner { flex-direction: column; gap: 20px; text-align: center; }
+        }
+
+        @media (max-width: 640px) {
+            .container { padding: 0 20px; }
+            .hero { min-height: 90vh; padding: 60px 0; }
+            .hero h1 { font-size: 32px; }
+            .hero-sub { font-size: 15px; }
+            .hero-actions { flex-direction: column; align-items: center; }
+            .btn { width: 100%; max-width: 280px; justify-content: center; }
+            .features-grid { grid-template-columns: 1fr; }
+            .section-title { font-size: 24px; }
+            .section-desc { font-size: 14px; }
+            .platforms-row { grid-template-columns: repeat(2, 1fr); gap: 12px; }
+            .platform-item { padding: 20px 16px; }
+            .platform-icon img { width: 32px; height: 32px; }
+            .setup-step { gap: 12px; }
+            .step-body h4 { font-size: 13px; }
+            .step-body p { font-size: 12px; }
+            .faq-q { font-size: 13px; }
+            .faq-a { font-size: 12px; padding-left: 22px; }
+            .footer-inner { flex-direction: column; gap: 16px; text-align: center; }
+            .footer-left { flex-direction: column; }
+            .footer-links { gap: 16px; }
+        }
+
+        @media (max-width: 400px) {
+            .platforms-row { grid-template-columns: 1fr 1fr; gap: 10px; }
+            .platform-item { padding: 16px 12px; }
+            .platform-item h4 { font-size: 13px; }
         }
     </style>
 </head>
