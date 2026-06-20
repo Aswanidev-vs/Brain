@@ -15,7 +15,7 @@
 </p>
 
 <p align="center">
-  <a href="index.html">Website</a> • <a href="https://github.com/coddingtonbear/obsidian-local-rest-api">Obsidian Plugin</a>
+  <a href="https://aswanidev-vs.github.io/Brain/">Website</a> • <a href="https://github.com/coddingtonbear/obsidian-local-rest-api">Obsidian Plugin</a>
 </p>
 
 ---
