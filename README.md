@@ -9,7 +9,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-0.1.0-blue" alt="Version">
+  <img src="https://img.shields.io/badge/version-0.1.2-blue" alt="Version">
   <img src="https://img.shields.io/badge/license-MIT-green" alt="License">
   <img src="https://img.shields.io/badge/chrome-MV3-purple" alt="Manifest V3">
 </p>
@@ -27,6 +27,7 @@
 - **Manual Capture** - "Capture to Brain" button as fallback
 - **Obsidian Integration** - Direct vault writing via Local REST API
 - **Graph Connections** - Auto-generates linked notes for Obsidian Graph View
+- **Live Status** - Real-time connection indicators on the capture button and extension icon
 - **Privacy Options** - Exclude URLs, anonymize AI names
 - **100% Local** - No data leaves your machine
 
@@ -140,6 +141,7 @@ YourVault/
 | "API error 401" | Wrong API key - copy from plugin settings |
 | "Capture failed" | Refresh page, try manual button |
 | Auto-capture not working | Check Settings → Enable auto-capture |
+| Red dot on capture button | Obsidian is not running or API key is invalid |
 
 ## Supported Platforms
 

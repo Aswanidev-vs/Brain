@@ -130,11 +130,20 @@ async function saveConversation(conversation) {
   const folder = s.captureFolder || 'AI-Brain';
   const platformFolder = conversation.platform.toLowerCase();
   const filename = generateFilename(conversation);
-  const isAPI = s.connectionMethod === 'api';
-
-  if (!s.connectionMethod) {
-    return { success: false, error: 'Not configured - open Brain extension and connect first' };
+  // Infer connection method if not explicitly set
+  let connectionMethod = s.connectionMethod;
+  if (!connectionMethod) {
+    if (s.apiKey) {
+      connectionMethod = 'api';
+    } else {
+      // No method chosen and no API key — truly not configured
+      return { success: false, error: 'Not configured - open Brain extension and connect first' };
+    }
+    // Persist inferred method so future calls don't repeat this
+    chrome.storage.sync.set({ connectionMethod });
   }
+
+  const isAPI = connectionMethod === 'api';
 
   if (isAPI && !s.apiKey) return { success: false, error: 'Not connected - no API key. Open Brain extension and paste your API key.' };
 
@@ -181,5 +190,110 @@ chrome.runtime.onMessage.addListener((req, sender, sendResponse) => {
   if (req.action === 'saveConversation') {
     saveConversation(req.data).then(r => sendResponse(r));
     return true;
+  }
+  if (req.action === 'getConnectionStatus') {
+    checkConnection().then(status => sendResponse(status));
+    return true;
+  }
+});
+
+// --- Heartbeat & Badge System ---
+
+const HEARTBEAT_ALARM = 'brain-heartbeat';
+const HEARTBEAT_INTERVAL_MIN = 2; // every 2 minutes
+
+async function checkConnection() {
+  const s = await chrome.storage.sync.get(['apiKey', 'port', 'useHttps', 'connectionMethod', 'isConnected']);
+
+  // FS mode — always "connected" (no server to check)
+  if (s.connectionMethod === 'fs') {
+    return { connected: true, method: 'fs' };
+  }
+
+  // API mode — need key + active Obsidian
+  if (!s.apiKey) {
+    return { connected: false, method: 'api', reason: 'no-key' };
+  }
+
+  const protocol = s.useHttps ? 'https' : 'http';
+  const port = s.port || (s.useHttps ? 27124 : 27123);
+
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 3000);
+    const res = await fetch(`${protocol}://127.0.0.1:${port}/`, {
+      headers: { 'Authorization': `Bearer ${s.apiKey}`, 'Accept': 'application/json' },
+      signal: controller.signal
+    });
+    clearTimeout(timeout);
+
+    if (res.ok) {
+      // Ensure isConnected stays true in storage
+      if (!s.isConnected) chrome.storage.sync.set({ isConnected: true });
+      return { connected: true, method: 'api' };
+    }
+    return { connected: false, method: 'api', reason: `http-${res.status}` };
+  } catch (e) {
+    // Obsidian is down — mark disconnected
+    if (s.isConnected) chrome.storage.sync.set({ isConnected: false });
+    return { connected: false, method: 'api', reason: e.name === 'AbortError' ? 'timeout' : 'unreachable' };
+  }
+}
+
+function updateBadge(connected) {
+  if (connected) {
+    chrome.action.setBadgeText({ text: '✓' });
+    chrome.action.setBadgeBackgroundColor({ color: '#22c55e' });
+  } else {
+    chrome.action.setBadgeText({ text: '✗' });
+    chrome.action.setBadgeBackgroundColor({ color: '#ef4444' });
+  }
+}
+
+async function heartbeat() {
+  const s = await chrome.storage.sync.get(['connectionMethod', 'apiKey']);
+
+  // Not configured at all — clear badge
+  if (!s.connectionMethod && !s.apiKey) {
+    chrome.action.setBadgeText({ text: '' });
+    return;
+  }
+
+  const status = await checkConnection();
+  updateBadge(status.connected);
+
+  // Broadcast to all AI chat tabs so capture buttons update
+  broadcastConnectionStatus(status.connected);
+}
+
+async function broadcastConnectionStatus(connected) {
+  try {
+    const tabs = await chrome.tabs.query({});
+    const hosts = ['chat.openai.com', 'chatgpt.com', 'claude.ai', 'gemini.google.com', 'grok.com', 'x.com'];
+    for (const tab of tabs) {
+      try {
+        if (tab.url && hosts.some(h => tab.url.includes(h))) {
+          chrome.tabs.sendMessage(tab.id, { action: 'connectionStatus', connected }).catch(() => {});
+        }
+      } catch { /* tab may not have content script */ }
+    }
+  } catch { /* tabs query can fail */ }
+}
+
+// Set up recurring heartbeat alarm
+chrome.alarms.create(HEARTBEAT_ALARM, { periodInMinutes: HEARTBEAT_INTERVAL_MIN });
+
+chrome.alarms.onAlarm.addListener((alarm) => {
+  if (alarm.name === HEARTBEAT_ALARM) heartbeat();
+});
+
+// Run heartbeat on install/startup
+chrome.runtime.onInstalled.addListener(() => heartbeat());
+chrome.runtime.onStartup.addListener(() => heartbeat());
+
+// Run heartbeat when storage changes (user connects/disconnects)
+chrome.storage.onChanged.addListener((changes) => {
+  if (changes.isConnected || changes.apiKey || changes.connectionMethod) {
+    heartbeat();
   }
 });

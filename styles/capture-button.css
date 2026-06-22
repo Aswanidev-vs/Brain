@@ -47,3 +47,38 @@
 }
 @keyframes abSlideIn { from { opacity: 0; transform: translateX(20px); } to { opacity: 1; transform: translateX(0); } }
 @keyframes abSlideOut { from { opacity: 1; transform: translateX(0); } to { opacity: 0; transform: translateX(20px); } }
+
+/* Connection status dot on capture button */
+.ai-brain-status-dot {
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, 0.9);
+  background: #6b7280;
+  transition: background 0.3s ease, box-shadow 0.3s ease;
+  pointer-events: none;
+}
+.ai-brain-status-dot.connected {
+  background: #22c55e;
+  box-shadow: 0 0 6px rgba(34, 197, 94, 0.6);
+  animation: abPulseGreen 2s ease-in-out infinite;
+}
+.ai-brain-status-dot.disconnected {
+  background: #ef4444;
+  box-shadow: 0 0 6px rgba(239, 68, 68, 0.6);
+}
+.ai-brain-status-dot.unknown {
+  background: #6b7280;
+  animation: abPulseGray 1.5s ease-in-out infinite;
+}
+@keyframes abPulseGreen {
+  0%, 100% { box-shadow: 0 0 4px rgba(34, 197, 94, 0.4); }
+  50% { box-shadow: 0 0 8px rgba(34, 197, 94, 0.8); }
+}
+@keyframes abPulseGray {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 1; }
+}

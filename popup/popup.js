@@ -14,6 +14,8 @@
   $$('input[name="method"]').forEach(r => r.onchange = () => {
     $('#apiSetup').style.display = r.value === 'api' ? 'block' : 'none';
     $('#fsSetup').style.display = r.value === 'fs' ? 'block' : 'none';
+    // Persist method selection immediately so service worker knows the intent
+    chrome.storage.sync.set({ connectionMethod: r.value });
   });
 
   load();

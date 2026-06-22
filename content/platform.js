@@ -19,9 +19,14 @@
   let autoSaveTimeout = null;
   let isCapturing = false;
   let isAutoSaving = false;
+  let connectionStatus = null; // null = unknown, true = connected, false = disconnected
 
-  chrome.storage.sync.get(['autoCapture', 'autoCaptureDelay'], (settings) => {
-    autoCaptureEnabled = settings.autoCapture !== false;
+  chrome.storage.sync.get(['autoCapture', 'autoCaptureDelay', 'connectionMethod', 'apiKey', 'isConnected'], (settings) => {
+    // Only enable auto-capture if extension is actually configured
+    const isConfigured = settings.connectionMethod === 'fs' ||
+                         (settings.connectionMethod === 'api' && settings.apiKey && settings.isConnected) ||
+                         (!settings.connectionMethod && settings.apiKey && settings.isConnected);
+    autoCaptureEnabled = isConfigured && settings.autoCapture !== false;
     autoCaptureDelay = settings.autoCaptureDelay || 5000;
   });
 
@@ -194,9 +199,28 @@
     if (captureBtn) return;
     captureBtn = document.createElement('button');
     captureBtn.className = 'ai-brain-capture-btn';
-    captureBtn.innerHTML = `<svg class="brain-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z"/><path d="M8 12c0-2.21 1.79-4 4-4s4 1.79 4 4-1.79 4-4 4"/><circle cx="12" cy="12" r="2"/></svg><span>Capture to Brain</span>`;
+    captureBtn.innerHTML = `<svg class="brain-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z"/><path d="M8 12c0-2.21 1.79-4 4-4s4 1.79 4 4-1.79 4-4 4"/><circle cx="12" cy="12" r="2"/></svg><span>Capture to Brain</span><span class="ai-brain-status-dot" title="Checking connection..."></span>`;
     captureBtn.onclick = () => capture(false);
     document.body.appendChild(captureBtn);
+    // Check initial connection status
+    updateConnectionDot(connectionStatus);
+  }
+
+  function updateConnectionDot(connected) {
+    connectionStatus = connected;
+    const dot = captureBtn?.querySelector('.ai-brain-status-dot');
+    if (!dot) return;
+    dot.classList.remove('connected', 'disconnected', 'unknown');
+    if (connected === true) {
+      dot.classList.add('connected');
+      dot.title = 'Connected to Obsidian';
+    } else if (connected === false) {
+      dot.classList.add('disconnected');
+      dot.title = 'Not connected to Obsidian';
+    } else {
+      dot.classList.add('unknown');
+      dot.title = 'Checking connection...';
+    }
   }
 
   function setCaptureButtonLabel(text) {
@@ -337,6 +361,9 @@
       autoCaptureEnabled = !autoCaptureEnabled;
       toast(`Auto-capture ${autoCaptureEnabled ? 'enabled' : 'disabled'}`);
     }
+    if (req.action === 'connectionStatus') {
+      updateConnectionDot(req.connected);
+    }
   });
 
   chrome.storage.onChanged.addListener((changes) => {
@@ -346,6 +373,15 @@
     if (changes.autoCaptureDelay) {
       autoCaptureDelay = changes.autoCaptureDelay.newValue || 5000;
     }
+    // Re-evaluate auto-capture when connection state changes
+    if (changes.connectionMethod || changes.isConnected || changes.apiKey) {
+      chrome.storage.sync.get(['autoCapture', 'connectionMethod', 'apiKey', 'isConnected'], (s) => {
+        const isConfigured = s.connectionMethod === 'fs' ||
+                             (s.connectionMethod === 'api' && s.apiKey && s.isConnected) ||
+                             (!s.connectionMethod && s.apiKey && s.isConnected);
+        autoCaptureEnabled = isConfigured && s.autoCapture !== false;
+      });
+    }
   });
 
   setupAutoCapture();
@@ -354,4 +390,9 @@
   lastAssistantSignature = getLatestAssistantSignature(getMessages());
   pendingMessageCount = lastMessageCount;
   pendingAssistantSignature = lastAssistantSignature;
+  // Fetch initial connection status from service worker
+  chrome.runtime.sendMessage({ action: 'getConnectionStatus' }, (response) => {
+    if (chrome.runtime.lastError) return; // extension context invalidated
+    if (response) updateConnectionDot(response.connected);
+  });
 })();
