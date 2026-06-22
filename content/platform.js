@@ -57,40 +57,91 @@
             const msgs = [];
             const seen = new Set();
 
-            document.querySelectorAll('p, li, h1, h2, h3, h4, h5, h6, pre, blockquote').forEach(el => {
-              const text = readText(el);
-              if (text.length < 5 || seen.has(text)) return;
-              if (text.includes('Write a message') || text.includes('Settings') || text.includes('Keyboard')) return;
-              if (text.includes('Claude Fable') || text.includes('Learn more')) return;
-              seen.add(text);
-              msgs.push({
-                role: 'assistant',
-                content: text
-              });
-            });
+            // Collect messages with DOM position for proper ordering
+            const collected = [];
 
-            if (msgs.length === 0) {
-              document.querySelectorAll('[class*="prose"], [class*="markdown"]').forEach(el => {
+            // Strategy 1: data-testid selectors (most reliable)
+            const userEls = document.querySelectorAll('[data-testid="user-message"]');
+            const assistantEls = document.querySelectorAll('.font-claude-message');
+
+            if (userEls.length > 0 || assistantEls.length > 0) {
+              userEls.forEach(el => {
                 const text = readText(el);
-                if (text.length > 10 && !seen.has(text)) {
+                if (text.length >= 5 && !seen.has(text)) {
                   seen.add(text);
-                  msgs.push({
-                    role: 'assistant',
-                    content: text
-                  });
+                  collected.push({ role: 'user', content: text, el });
+                }
+              });
+              assistantEls.forEach(el => {
+                const text = readText(el);
+                if (text.length >= 5 && !seen.has(text)) {
+                  seen.add(text);
+                  collected.push({ role: 'assistant', content: text, el });
                 }
               });
             }
 
+            // Strategy 2: class-based turn containers
+            if (collected.length === 0) {
+              document.querySelectorAll('[class*="turn"], [class*="message-row"], [class*="msg-row"]').forEach(el => {
+                const text = readText(el);
+                if (text.length < 5 || seen.has(text)) return;
+                if (text.includes('Write a message') || text.includes('Keyboard')) return;
+                const classes = (el.className || '').toString().toLowerCase();
+                const isUser = classes.includes('human') || classes.includes('user');
+                seen.add(text);
+                collected.push({ role: isUser ? 'user' : 'assistant', content: text, el });
+              });
+            }
+
+            // Strategy 3: Walk prose/markdown blocks, detect role by ancestry
+            if (collected.length === 0) {
+              document.querySelectorAll('[class*="prose"], [class*="markdown"]').forEach(el => {
+                const text = readText(el);
+                if (text.length < 10 || seen.has(text)) return;
+                if (text.includes('Write a message') || text.includes('Settings')) return;
+                if (text.includes('Claude Fable') || text.includes('Learn more')) return;
+                seen.add(text);
+
+                // Check ancestors for role hints
+                let role = 'assistant';
+                let parent = el.parentElement;
+                for (let i = 0; i < 8 && parent; i++) {
+                  const pc = (parent.className || '').toString().toLowerCase();
+                  const dr = parent.getAttribute('data-role') || '';
+                  if (pc.includes('human') || dr === 'human' || dr === 'user') { role = 'user'; break; }
+                  if (pc.includes('assistant') || dr === 'assistant') break;
+                  parent = parent.parentElement;
+                }
+                collected.push({ role, content: text, el });
+              });
+            }
+
+            // Sort by DOM position to maintain conversation order
+            collected.sort((a, b) => {
+              const pos = a.el.compareDocumentPosition(b.el);
+              return pos & Node.DOCUMENT_POSITION_FOLLOWING ? -1 : 1;
+            });
+
+            collected.forEach(m => msgs.push({ role: m.role, content: m.content }));
             return msgs;
           },
           title: () => {
-            const h = document.querySelector('h1');
-            const title = readText(h);
-            if (title && title !== 'Claude') return title;
+            // Try page title first
+            const pageTitle = document.title?.replace(/\s*[-–|]?\s*Claude\s*$/, '').trim();
+            if (pageTitle && pageTitle !== 'Claude' && pageTitle.length > 2) return pageTitle;
+            // Fallback: first user message
+            const firstUser = document.querySelector('[data-testid="user-message"]');
+            const text = readText(firstUser);
+            if (text) return text.substring(0, 60);
             return null;
           },
-          getMessageCount: () => document.querySelectorAll('p').length
+          getMessageCount: () => {
+            // Count actual conversation turns, not random p tags
+            const turns = document.querySelectorAll('[data-testid="user-message"], .font-claude-message');
+            if (turns.length > 0) return turns.length;
+            return document.querySelectorAll('[class*="turn"], [class*="prose"]').length;
+          }
         };
       case 'Gemini':
         return {
