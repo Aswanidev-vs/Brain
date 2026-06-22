@@ -61,8 +61,14 @@
             const collected = [];
 
             // Strategy 1: data-testid selectors (most reliable)
-            const userEls = document.querySelectorAll('[data-testid="user-message"]');
-            const assistantEls = document.querySelectorAll('.font-claude-message');
+            const userEls = document.querySelectorAll('[data-testid="user-message"], [data-testid*="user"], [data-message-author-role="user"]');
+            const assistantEls = document.querySelectorAll([
+              '[data-testid="assistant-message"]',
+              '[data-testid*="assistant"]',
+              '.font-claude-message',
+              '[class*="font-claude"]',
+              '[class*="claude-message"]'
+            ].join(', '));
 
             if (userEls.length > 0 || assistantEls.length > 0) {
               userEls.forEach(el => {
@@ -138,7 +144,15 @@
           },
           getMessageCount: () => {
             // Count actual conversation turns, not random p tags
-            const turns = document.querySelectorAll('[data-testid="user-message"], .font-claude-message');
+            const turns = document.querySelectorAll([
+              '[data-testid="user-message"]',
+              '[data-testid*="user"]',
+              '[data-testid="assistant-message"]',
+              '[data-testid*="assistant"]',
+              '.font-claude-message',
+              '[class*="font-claude"]',
+              '[class*="claude-message"]'
+            ].join(', '));
             if (turns.length > 0) return turns.length;
             return document.querySelectorAll('[class*="turn"], [class*="prose"]').length;
           }
@@ -362,7 +376,6 @@
       const latestAssistantSignature = getLatestAssistantSignature(messages);
 
       if (
-        targetMessageCount > lastMessageCount &&
         msgCount >= targetMessageCount &&
         msgCount > 0 &&
         targetAssistantSignature &&
@@ -391,7 +404,7 @@
         const latestAssistantSignature = getLatestAssistantSignature(messages);
 
         if (
-          msgCount > lastMessageCount &&
+          (msgCount > lastMessageCount || latestAssistantSignature !== lastAssistantSignature) &&
           latestAssistantSignature &&
           latestAssistantSignature !== lastAssistantSignature
         ) {
