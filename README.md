@@ -23,11 +23,11 @@
 ## Features
 
 - **Multi-Platform Support** - ChatGPT, Claude, Gemini, Grok
-- **Auto-Capture** - Saves automatically after AI responds (configurable delay)
-- **Manual Capture** - "Capture to Brain" button as fallback
+- **Auto-Capture** - Saves automatically after the AI reply appears and your delay passes
+- **Manual Capture** - `Capture to Brain` button stays available as fallback
 - **Obsidian Integration** - Direct vault writing via Local REST API
 - **Graph Connections** - Auto-generates linked notes for Obsidian Graph View
-- **Live Status** - Real-time connection indicators on the capture button and extension icon
+- **Live Status** - Connection indicators on the capture button and extension icon
 - **Privacy Options** - Exclude URLs, anonymize AI names
 - **100% Local** - No data leaves your machine
 
@@ -35,47 +35,56 @@
 
 ### 1. Install Chrome Extension
 
-1. Open Chrome → `chrome://extensions/`
+1. Open Chrome -> `chrome://extensions/`
 2. Enable **Developer mode**
 3. Click **Load unpacked**
-4. Select the `Brain` folder
+4. Select the `brain` folder
 
 ### 2. Install Obsidian Plugin
 
-1. Open Obsidian → Settings → Community plugins → Browse
-2. Search **"Local REST API with MCP"** by Adam Coddington → Install → Enable
-
-3. Copy the **API Key** from plugin settings
-4. Enable **HTTP server** (port 27123)
+1. Open Obsidian -> Settings -> Community plugins -> Browse
+2. Search **Local REST API with MCP** by Adam Coddington
+3. Install and enable it
+4. Copy the **API Key** from plugin settings
+5. Enable the HTTP server on port `27123`
 
 ### 3. Connect
 
-1. Click Brain icon in Chrome
-2. Paste your API Key
+1. Click the Brain extension icon
+2. Paste your API key
 3. Port: `27123`
-4. Click **Connect** → **Test**
+4. Click **Connect**
+5. Click **Test**
 
 ### 4. Capture
 
-1. Go to ChatGPT/Claude/Gemini/Grok
-2. Click **"Capture to Brain"** or wait for auto-save
-3. Check your Obsidian vault → `AI-Brain/` folder
+1. Go to ChatGPT, Claude, Gemini, or Grok
+2. Click `Capture to Brain` or wait for auto-capture
+3. Check your Obsidian vault in `AI-Brain/`
 
 ## Auto-Capture
 
-Brain watches for new messages and saves automatically:
+Brain watches for new AI replies and saves automatically:
 
-1. Send a message to AI
-2. AI responds
-3. After your delay (default: 5 seconds) → auto-saves
-4. Manual button always available as fallback
+1. Send a message to the AI
+2. Wait for the AI reply to appear
+3. After your delay passes, Brain auto-saves
+4. The manual button remains available as fallback
+
+### Claude note
+
+Claude updates its page differently from the other platforms, so Brain uses adaptive page detection there.
+
+What that means in practice:
+- Claude auto-capture may rely on reply-content changes, not only message-count changes
+- If Claude ships a UI update and auto-capture misses a reply, the manual `Capture to Brain` button still works immediately
 
 ### Settings
 
 | Setting | Default | Description |
 |---------|---------|-------------|
 | Enable auto-capture | On | Toggle automatic saving |
-| Delay | 5000ms | Wait time after new message |
+| Delay | 5000ms | Wait time after a new AI reply appears |
 | Capture Folder | AI-Brain | Folder name in vault |
 | Generate graph | On | Create linked notes |
 
@@ -86,74 +95,78 @@ Saved as Markdown with YAML frontmatter:
 ```markdown
 ---
 title: "Chat Title"
-platform: ChatGPT
-captured: 2024-01-15T10:30:00Z
+platform: Claude
+captured: 2026-06-22T10:30:00Z
 tags:
   - ai-conversation
-  - chatgpt
+  - claude
 ---
 
 # Chat Title
 
-**Platform:** ChatGPT
-**Captured:** 1/15/2024, 10:30:00 AM
+**Platform:** Claude
+**Captured:** 6/22/2026, 10:30:00 AM
 
 ---
 
-## 👤 You
+**User:**
 
 Your message here
 
 ---
 
-## 🤖 ChatGPT
+**Claude:**
 
 AI response here
 ```
 
 ## Vault Structure
 
-```
+```text
 YourVault/
 └── AI-Brain/
     ├── chatgpt/
-    │   └── 2024-01-15-conversation.md
+    │   └── 2026-06-22-conversation.md
     ├── claude/
     ├── gemini/
     ├── grok/
     └── _graphs/
-        └── 2024-01-15-graph.md
+        └── 2026-06-22-graph.md
 ```
 
 ## Security
 
-- ✅ 100% local - no external servers
-- ✅ No analytics or tracking
-- ✅ No account required
-- ✅ Open source
-- ✅ Data only goes to your Obsidian vault
+- 100% local
+- No analytics or tracking
+- No account required
+- Open source
+- Data only goes to your Obsidian vault
 
 ## Troubleshooting
 
 | Issue | Solution |
 |-------|----------|
-| "Not connected" | Check Obsidian is running, plugin enabled |
-| "API error 401" | Wrong API key - copy from plugin settings |
-| "Capture failed" | Refresh page, try manual button |
-| Auto-capture not working | Check Settings → Enable auto-capture |
-| Red dot on capture button | Obsidian is not running or API key is invalid |
+| `Not connected` | Check that Obsidian is running and the plugin is enabled |
+| `API error 401` | The API key is wrong; copy it again from plugin settings |
+| `Capture failed` | Refresh the page and try the manual button |
+| Auto-capture not working | Check Settings -> Enable auto-capture and make sure the AI reply has appeared |
+| Claude auto-capture misses a response | Claude updates its page differently; wait for the reply to settle or use manual capture |
+| Red dot on capture button | Obsidian is not running or the API key is invalid |
+| `Extension context invalidated` | The extension was updated; reload the chat page once |
 
 ## Supported Platforms
 
 | Platform | URL |
 |----------|-----|
-| ChatGPT | chat.openai.com, chatgpt.com |
-| Claude | claude.ai |
-| Gemini | gemini.google.com |
-| Grok | grok.com, x.com |
+| ChatGPT | `chat.openai.com`, `chatgpt.com` |
+| Claude | `claude.ai` |
+| Gemini | `gemini.google.com` |
+| Grok | `grok.com`, `x.com` |
 
 ## Acknowledgements
 
 This project uses the [Local REST API with MCP](https://github.com/coddingtonbear/obsidian-local-rest-api) plugin by Adam Coddington to connect with Obsidian and write notes directly to your vault.
 
-A huge thank you to the maintainers of this incredible plugin that makes the Obsidian integration possible.
+## License
+
+MIT

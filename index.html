@@ -556,7 +556,7 @@
                 v0.1.0
             </div> -->
             <h1>Your AI chats,<br><span>connected.</span></h1>
-            <p class="hero-sub">Capture conversations from ChatGPT, Claude, Gemini, and Grok. Save them to Obsidian with graph links. Everything stays on your machine.</p>
+            <p class="hero-sub">Capture conversations from ChatGPT, Claude, Gemini, and Grok. Save them to Obsidian with graph links and a manual fallback that is always there.</p>
             <div class="hero-actions">
                 <!-- <a href="#setup" class="btn btn-primary">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
@@ -587,7 +587,7 @@
                         <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
                     </div>
                     <h3>Auto-Capture</h3>
-                    <p>Detects when the AI finishes responding and saves automatically. Set your delay, forget about it.</p>
+                    <p>Detects when the AI reply appears and saves automatically after your delay. The manual button stays ready too.</p>
                 </div>
                 <div class="feature-card">
                     <div class="feature-icon">
@@ -615,7 +615,7 @@
                         <svg viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
                     </div>
                     <h3>Multi-Platform</h3>
-                    <p>ChatGPT, Claude, Gemini, Grok. Same button, same flow.</p>
+                    <p>ChatGPT, Claude, Gemini, Grok. Same button everywhere, with adaptive detection for Claude.</p>
                 </div>
                 <div class="feature-card">
                     <div class="feature-icon">
@@ -716,7 +716,7 @@
         <div class="container">
             <div class="section-label">Supported</div>
             <h2 class="section-title">Works where you chat</h2>
-            <p class="section-desc">Same experience across all four platforms.</p>
+            <p class="section-desc">Consistent capture flow across all four platforms, with Claude-specific detection under the hood.</p>
 
             <div class="platforms-row">
                 <div class="platform-item">
@@ -784,7 +784,15 @@
                         <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
                         Auto-capture doesn't save anything
                     </div>
-                    <div class="faq-a">Open Brain settings, make sure "Enable auto-capture" is checked, and click Save Settings. Also check that your delay isn't too high.</div>
+                    <div class="faq-a">Open Brain settings, make sure "Enable auto-capture" is checked, and click Save Settings. Also check that your delay is not too high and wait for the AI reply to appear before expecting a save.</div>
+                </div>
+
+                <div class="faq-item">
+                    <div class="faq-q">
+                        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                        Claude auto-capture misses a reply sometimes
+                    </div>
+                    <div class="faq-a">Claude updates its page differently from the other platforms, so Brain uses adaptive detection there. If Claude changes its UI and a reply is missed, wait for the response to settle or use the manual Capture to Brain button.</div>
                 </div>
 
                 <div class="faq-item">
