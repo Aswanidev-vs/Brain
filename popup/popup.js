@@ -4,6 +4,22 @@
 
   let vaultDirHandle = null;
 
+  function pickFolderViaInput() {
+    return new Promise((resolve) => {
+      const input = $('#hiddenFolderInput');
+      input.value = '';
+      input.onchange = () => {
+        if (input.files.length > 0) {
+          const relPath = input.files[0].webkitRelativePath;
+          resolve(relPath.split('/')[0]);
+        } else {
+          resolve(null);
+        }
+      };
+      input.click();
+    });
+  }
+
   $$('.tab').forEach(t => t.onclick = () => {
     $$('.tab').forEach(x => x.classList.remove('active'));
     $$('.panel').forEach(x => x.style.display = 'none');
@@ -36,32 +52,34 @@
 
   $('#selectFolder').onclick = async () => {
     try {
+      let folderName = null;
       if ('showDirectoryPicker' in window) {
         const h = await window.showDirectoryPicker({ mode: 'readwrite' });
-        await chrome.storage.sync.set({ vaultPath: h.name });
-        $('#vaultDisplay').textContent = h.name;
-        toast('Folder selected!');
+        folderName = h.name;
       } else {
-        const p = prompt('Enter vault path (e.g., C:\\Users\\You\\Documents\\MyVault)');
-        if (p) { await chrome.storage.sync.set({ vaultPath: p }); $('#vaultDisplay').textContent = p; toast('Path saved!'); }
+        folderName = await pickFolderViaInput();
+      }
+      if (folderName) {
+        await chrome.storage.sync.set({ vaultPath: folderName });
+        $('#vaultDisplay').textContent = folderName;
+        toast('Folder selected!');
       }
     } catch (e) { /* cancelled */ }
   };
 
   $('#selectVaultFolder').onclick = async () => {
     try {
+      let folderName = null;
       if ('showDirectoryPicker' in window) {
         vaultDirHandle = await window.showDirectoryPicker({ mode: 'readwrite' });
-        await chrome.storage.sync.set({ vaultPath: vaultDirHandle.name, vaultPathFull: vaultDirHandle.name });
-        updateVaultDisplay(vaultDirHandle.name);
-        toast('Vault folder selected!');
+        folderName = vaultDirHandle.name;
       } else {
-        const p = prompt('Enter your Obsidian vault path:\n(e.g., C:\\Users\\You\\Documents\\MyVault)');
-        if (p && p.trim()) {
-          await chrome.storage.sync.set({ vaultPath: p.trim() });
-          updateVaultDisplay(p.trim());
-          toast('Vault path saved!');
-        }
+        folderName = await pickFolderViaInput();
+      }
+      if (folderName) {
+        await chrome.storage.sync.set({ vaultPath: folderName, vaultPathFull: folderName });
+        updateVaultDisplay(folderName);
+        toast('Vault folder selected!');
       }
     } catch (e) {
       if (e.name !== 'AbortError') {
